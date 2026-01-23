@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JasEditor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/monaco-editor@0.39.0/min/vs/loader.js"></script>
+    <style>
+        :root {
+            --bg-primary: #1e1e1e;
+            --bg-secondary: #252526;
+            --bg-tertiary: #2d2d30;
+            --text-primary: #cccccc;
+            --text-secondary: #858585;
+            --accent-primary: #007acc;
+            --accent-secondary: #0e639c;
+            --border-color: #3e3e42;
+            --success-color: #4ec9b0;
+            --error-color: #f14c4c;
+            --sidebar-width: 250px;
+            --header-height: 40px;
+            --transition-speed: 0.3s;
+        }
+
+        .theme-high-contrast {
+            --bg-primary: #000000;
+            --bg-secondary: #0c0c0c;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --accent-primary: #ffff00;
+            --accent-secondary: #ffa500;
+            --border-color: #ffffff;
+            --success-color: #00ff00;
+            --error-color: #ff0000;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            height: var(--header-height);
+            background-color: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            border-bottom: 1px solid var(--border-color);
+            transition: all var(--transition-speed);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--accent-primary);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .logo i {
+            font-size: 20px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            background-color: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .btn:hover {
+            background-color: var(--bg-tertiary);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-secondary);
+        }
+
+        /* Main Content Area */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: all var(--transition-speed);
+            transform: translateX(0);
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+            width: 0;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header i {
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-header i:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .explorer {
+            padding: 10px 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .explorer-item {
+            padding: 6px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 13px;
+        }
+
+        .explorer-item:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .explorer-item.active {
+            background-color: var(--bg-tertiary);
+            border-left: 3px solid var(--accent-primary);
+        }
+
+        .explorer-item i.folder {
+            color: #e2c08d;
+        }
+
+        .explorer-item i.file {
+            color: #519aba;
+        }
+
+        .file-actions {
+            padding: 10px 15px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Editor Area */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .tabs-container {
+            background-color: var(--bg-secondary);
+            display: flex;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-color);
+            min-height: 36px;
+        }
+
+        .tab {
+            padding: 10px 15px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .tab:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .tab.active {
+            background-color: var(--bg-primary);
+            color: white;
+        }
+
+        .tab.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--accent-primary);
+            animation: tabHighlight 0.5s ease-out;
+        }
+
+        .tab-close {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .tab-close:hover {
+            background-color: var(--border-color);
+        }
+
+        .editor-wrapper {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #editor {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Preview Area */
+        .preview-container {
+            width: 45%;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border-color);
+            transition: all var(--transition-speed);
+            transform: translateX(0);
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        .preview-container.collapsed {
+            transform: translateX(100%);
+            width: 0;
+        }
+
+        .preview-header {
+            background-color: var(--bg-secondary);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #preview {
+            flex: 1;
+            border: none;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 24px;
+            background-color: var(--accent-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            font-size: 12px;
+            overflow: hidden;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100%;
+            background-color: var(--bg-secondary);
+            z-index: 100;
+            transition: right var(--transition-speed);
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .settings-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .setting-group {
+            margin-bottom: 25px;
+        }
+
+        .setting-title {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: var(--accent-primary);
+        }
+
+        .theme-option {
+            display: inline-block;
+            width: 48%;
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .theme-option:hover {
+            border-color: var(--accent-primary);
+            transform: scale(1.02);
+        }
+
+        .theme-option.active {
+            border-color: var(--accent-primary);
+            background-color: rgba(0, 122, 204, 0.1);
+        }
+
+        .select-control {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            margin-top: 5px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+            display: none;
+        }
+
+        .overlay.show {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Welcome Screen */
+        .welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .welcome-screen.hidden {
+            display: none;
+        }
+
+        .welcome-content {
+            text-align: center;
+            max-width: 600px;
+            padding: 30px;
+            animation: zoomIn 0.8s ease-out;
+        }
+
+        .welcome-title {
+            font-size: 42px;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, var(--accent-primary), var(--success-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .welcome-subtitle {
+            font-size: 18px;
+            margin-bottom: 40px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .welcome-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes tabHighlight {
+            0% { width: 0%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { width: 100%; opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .preview-container {
+                width: 50%;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 200px;
+            }
+            
+            .preview-container {
+                width: 60%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-code"></i>
+                <span>JasEditor</span>
+            </div>
+            <div class="header-controls">
+                <button class="btn" id="newFileBtn" title="New File">
+                    <i class="fas fa-file"></i> New File
+                </button>
+                <button class="btn" id="openFolderBtn" title="Open Folder">
+                    <i class="fas fa-folder-open"></i> Open Folder
+                </button>
+                <button class="btn btn-primary" id="runBtn" title="Run">
+                    <i class="fas fa-play"></i> Run
+                </button>
+                <button class="btn" id="settingsBtn" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <span>EXPLORER</span>
+                    <i class="fas fa-chevron-left" id="toggleSidebar"></i>
+                </div>
+                <div class="explorer" id="explorer">
+                    <div class="explorer-item active">
+                        <i class="fas fa-folder-open folder"></i>
+                        <span>project</span>
+                    </div>
+                    <div class="explorer-item">
+                        <i class="fas fa-file-code file"></i>
+                        <span>index.html</span>
+                    </div>
+                    <div class="explorer-item">
+                        <i class="fas fa-file-code file"></i>
+                        <span>style.css</span>
+                    </div>
+                    <div class="explorer-item">
+                        <i class="fas fa-file-code file"></i>
+                        <span>script.js</span>
+                    </div>
+                    <div class="explorer-item">
+                        <i class="fas fa-file-alt file"></i>
+                        <span>README.md</span>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button class="btn" id="newFileAction">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="btn" id="renameFileAction">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn" id="deleteFileAction">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor Area -->
+            <div class="editor-container">
+                <div class="tabs-container" id="tabsContainer">
+                    <!-- Tabs will be dynamically added here -->
+                </div>
+                <div class="editor-wrapper">
+                    <div id="editor"></div>
+                </div>
+            </div>
+
+            
+            <!-- Preview Area -->
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-header">
+                    <span>Live Preview</span>
+                    <div>
+                        <button class="btn" id="refreshPreview" title="Refresh">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button class="btn" id="togglePreview">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <iframe id="preview" title="Live Preview"></iframe>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <i class="fas fa-code-branch"></i>
+                <span>main</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-circle" style="color: var(--success-color); font-size: 8px;"></i>
+                <span id="languageStatus">JavaScript</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span id="cursorPosition">Ln 1, Col 1</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <i class="fas fa-times" id="closeSettings"></i>
+        </div>
+        <div class="settings-content">
+            <div class="setting-group">
+                <h3 class="setting-title">Editor Theme</h3>
+                <div class="theme-option active" data-theme="vs-dark">
+                    One Dark Pro
+                </div>
+                <div class="theme-option" data-theme="hc-black">
+                    High Contrast
+                </div>
+            </div>
+            
+            <div class="setting-group">
+                <h3 class="setting-title">UI Theme</h3>
+                <div class="theme-option active" data-ui-theme="default">
+                    Dark
+                </div>
+                <div class="theme-option" data-ui-theme="high-contrast">
+                    High Contrast
+                </div>
+            </div>
+            
+            <div class="setting-group">
+                <h3 class="setting-title">Font Size</h3>
+                <select class="select-control" id="fontSize">
+                    <option value="12">12px</option>
+                    <option value="14" selected>14px</option>
+                    <option value="16">16px</option>
+                    <option value="18">18px</option>
+                    <option value="20">20px</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <h3 class="setting-title">Font Family</h3>
+                <select class="select-control" id="fontFamily">
+                    <option value="'Courier New', monospace">Courier New</option>
+                    <option value="'Consolas', monospace" selected>Consolas</option>
+                    <option value="'Fira Code', monospace">Fira Code</option>
+                    <option value="'Source Code Pro', monospace">Source Code Pro</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <h3 class="setting-title">Auto Save</h3>
+                <select class="select-control" id="autoSave">
+                    <option value="off">Off</option>
+                    <option value="afterDelay" selected>After Delay</option>
+                    <option value="onFocusChange">On Focus Change</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Overlay -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Welcome Screen -->
+    <div class="welcome-screen" id="welcomeScreen">
+        <div class="welcome-content">
+            <h1 class="welcome-title">Zero-Latency Web IDE</h1>
+            <p class="welcome-subtitle">
+                A browser-native code editor with the feel and functionality of VS Code. 
+                Built with Monaco Editor, File System Access API, and modern web technologies.
+                No backend required - everything runs in your browser.
+            </p>
+            <div class="welcome-actions">
+                <button class="btn btn-primary" id="startCoding">
+                    <i class="fas fa-rocket"></i> Start Coding
+                </button>
+                <button class="btn" id="openDemo">
+                    <i class="fas fa-folder-open"></i> Open Demo Project
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize app state
+        const appState = {
+            currentFile: 'index.html',
+            files: {
+                'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Web App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Zero-Latency Web IDE</h1>
+        <p>Edit this HTML file and see changes in real-time!</p>
+        <button id="demoButton">Click Me!</button>
+        <div id="output"></div>
+    </div>
+    <script src="script.js"><\/script>
+</body>
+</html>`,
+                'style.css': `body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.container {
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    max-width: 600px;
+    width: 90%;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+p {
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+button {
+    background-color: #fff;
+    color: #764ba2;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+#output {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    min-height: 60px;
+}`,
+                'script.js': `document.addEventListener('DOMContentLoaded', function() {
+    const button = document.getElementById('demoButton');
+    const output = document.getElementById('output');
+    
+    let clickCount = 0;
+    
+    button.addEventListener('click', function() {
+        clickCount++;
+        output.innerHTML = \`<h3>Button clicked \${clickCount} times!</h3>\`;
+        
+        // Create a visual effect
+        button.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            button.style.transform = 'scale(1)';
+        }, 150);
+        
+        // Add a new message element with animation
+        const message = document.createElement('div');
+        message.textContent = \`Click #\${clickCount} at \${new Date().toLocaleTimeString()}\`;
+        message.style.opacity = '0';
+        message.style.transform = 'translateY(-10px)';
+        message.style.transition = 'all 0.3s ease';
+        
+        output.appendChild(message);
+        
+        // Trigger animation
+        setTimeout(() => {
+            message.style.opacity = '1';
+            message.style.transform = 'translateY(0)';
+        }, 10);
+    });
+    
+    console.log('JavaScript file loaded successfully!');
+});`,
+                'README.md': `# Zero-Latency Web IDE Demo Project
+
+This is a demonstration project for the Zero-Latency Web IDE.
+
+## Features Demonstrated:
+
+1. **Real-time Preview** - Changes in HTML, CSS, and JS files are reflected immediately in the preview pane
+2. **Multi-tab Editing** - Open multiple files simultaneously in separate tabs
+3. **File Management** - Create, rename, and delete files in the virtual file system
+4. **Syntax Highlighting** - Full syntax highlighting for multiple programming languages
+5. **IntelliSense** - Code completion and suggestions powered by Monaco Editor
+
+## How to Use:
+
+1. Edit any of the files in the editor
+2. See changes instantly in the preview pane
+3. Try creating new files with different extensions (.html, .css, .js, .py, .json)
+4. Customize the editor appearance in Settings
+
+## Supported Languages:
+
+- HTML
+- CSS
+- JavaScript
+- Python
+- JSON
+- Markdown
+
+Enjoy coding with Zero-Latency Web IDE!`
+            },
+            tabs: ['index.html'],
+            activeTab: 'index.html',
+            editor: null,
+            theme: 'vs-dark',
+            uiTheme: 'default',
+            fontSize: 14,
+            fontFamily: "'Consolas', monospace",
+            autoSave: 'afterDelay'
+        };
+
+        // DOM Elements
+        const editorElement = document.getElementById('editor');
+        const previewFrame = document.getElementById('preview');
+        const tabsContainer = document.getElementById('tabsContainer');
+        const explorerElement = document.getElementById('explorer');
+        const languageStatus = document.getElementById('languageStatus');
+        const cursorPosition = document.getElementById('cursorPosition');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const overlay = document.getElementById('overlay');
+
+        // Initialize Monaco Editor
+        function initEditor() {
+            require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.39.0/min/vs' }});
+            
+            require(['vs/editor/editor.main'], function() {
+                appState.editor = monaco.editor.create(editorElement, {
+                    value: appState.files[appState.currentFile],
+                    language: getLanguageFromFilename(appState.currentFile),
+                    theme: appState.theme,
+                    fontSize: appState.fontSize,
+                    fontFamily: appState.fontFamily,
+                    minimap: { enabled: true },
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'on',
+                    automaticLayout: true,
+                    suggestOnTriggerCharacters: true,
+                    formatOnPaste: true,
+                    formatOnType: true,
+                    smoothScrolling: true,
+                    cursorBlinking: 'smooth',
+                    cursorSmoothCaretAnimation: 'on'
+                });
+
+                // Update cursor position
+                appState.editor.onDidChangeCursorPosition((event) => {
+                    const position = event.position;
+                    cursorPosition.textContent = `Ln ${position.lineNumber}, Col ${position.column}`;
+                });
+
+                // Update language status
+                appState.editor.onDidChangeModelLanguage(() => {
+                    const model = appState.editor.getModel();
+                    if (model) {
+                        const lang = monaco.editor.getModelLanguage(model);
+                        languageStatus.textContent = lang.charAt(0).toUpperCase() + lang.slice(1);
+                    }
+                });
+
+                // Auto-save functionality
+                appState.editor.onDidChangeModelContent(debounce(() => {
+                    if (appState.autoSave !== 'off') {
+                        saveCurrentFile();
+                        updatePreview();
+                    }
+                }, 1000));
+
+                // Initialize tabs
+                updateTabs();
+                updateExplorer();
+                updatePreview();
+            });
+        }
+
+        // Initialize the app
+        function initApp() {
+            // Event Listeners
+            document.getElementById('startCoding').addEventListener('click', () => {
+                welcomeScreen.classList.add('hidden');
+                initEditor();
+            });
+
+            document.getElementById('openDemo').addEventListener('click', () => {
+                welcomeScreen.classList.add('hidden');
+                initEditor();
+            });
+
+            document.getElementById('toggleSidebar').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('collapsed');
+            });
+
+            document.getElementById('togglePreview').addEventListener('click', () => {
+                document.getElementById('previewContainer').classList.toggle('collapsed');
+            });
+
+            document.getElementById('newFileBtn').addEventListener('click', createNewFile);
+            document.getElementById('openFolderBtn').addEventListener('click', openFolder);
+            document.getElementById('runBtn').addEventListener('click', runCode);
+            document.getElementById('settingsBtn').addEventListener('click', openSettings);
+            document.getElementById('closeSettings').addEventListener('click', closeSettings);
+            document.getElementById('refreshPreview').addEventListener('click', updatePreview);
+            document.getElementById('newFileAction').addEventListener('click', createNewFile);
+            document.getElementById('renameFileAction').addEventListener('click', renameFile);
+            document.getElementById('deleteFileAction').addEventListener('click', deleteFile);
+
+            // Theme selectors
+            document.querySelectorAll('.theme-option[data-theme]').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.theme-option[data-theme]').forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    changeEditorTheme(this.dataset.theme);
+                });
+            });
+
+            document.querySelectorAll('.theme-option[data-ui-theme]').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.theme-option[data-ui-theme]').forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    changeUITheme(this.dataset.uiTheme);
+                });
+            });
+
+            // Settings controls
+            document.getElementById('fontSize').addEventListener('change', function() {
+                changeFontSize(parseInt(this.value));
+            });
+
+            document.getElementById('fontFamily').addEventListener('change', function() {
+                changeFontFamily(this.value);
+            });
+
+            document.getElementById('autoSave').addEventListener('change', function() {
+                appState.autoSave = this.value;
+            });
+
+            overlay.addEventListener('click', closeSettings);
+
+            // Show welcome screen initially
+            welcomeScreen.classList.remove('hidden');
+        }
+
+        // File Management Functions
+        function createNewFile() {
+            const fileName = prompt('Enter file name (with extension, e.g., newfile.js):', 'newfile.js');
+            if (fileName && !appState.files[fileName]) {
+                appState.files[fileName] = '';
+                appState.tabs.push(fileName);
+                appState.activeTab = fileName;
+                updateExplorer();
+                updateTabs();
+                openFile(fileName);
+            } else if (fileName && appState.files[fileName]) {
+                alert('File already exists!');
+            }
+        }
+
+        function renameFile() {
+            const oldName = appState.activeTab;
+            const newName = prompt('Enter new file name:', oldName);
+            if (newName && newName !== oldName) {
+                if (appState.files[newName]) {
+                    alert('File already exists!');
+                    return;
+                }
+                appState.files[newName] = appState.files[oldName];
+                delete appState.files[oldName];
+                
+                const tabIndex = appState.tabs.indexOf(oldName);
+                if (tabIndex !== -1) {
+                    appState.tabs[tabIndex] = newName;
+                }
+                
+                appState.activeTab = newName;
+                updateExplorer();
+                updateTabs();
+                openFile(newName);
+            }
+        }
+
+        function deleteFile() {
+            const fileName = appState.activeTab;
+            if (confirm(`Are you sure you want to delete "${fileName}"?`)) {
+                delete appState.files[fileName];
+                
+                const tabIndex = appState.tabs.indexOf(fileName);
+                if (tabIndex !== -1) {
+                    appState.tabs.splice(tabIndex, 1);
+                }
+                
+                if (appState.tabs.length > 0) {
+                    appState.activeTab = appState.tabs[0];
+                    openFile(appState.activeTab);
+                } else {
+                    appState.activeTab = null;
+                    appState.editor.setValue('');
+                }
+                
+                updateExplorer();
+                updateTabs();
+            }
+        }
+
+        function openFile(fileName) {
+            if (!appState.files[fileName]) return;
+            
+            appState.currentFile = fileName;
+            appState.activeTab = fileName;
+            
+            if (appState.editor) {
+                const model = monaco.editor.createModel(
+                    appState.files[fileName],
+                    getLanguageFromFilename(fileName)
+                );
+                appState.editor.setModel(model);
+                
+                // Update language status
+                const lang = getLanguageFromFilename(fileName);
+                languageStatus.textContent = lang.charAt(0).toUpperCase() + lang.slice(1);
+            }
+            
+            updateTabs();
+            updateExplorer();
+            updatePreview();
+        }
+
+        function saveCurrentFile() {
+            if (appState.editor && appState.activeTab) {
+                appState.files[appState.activeTab] = appState.editor.getValue();
+            }
+        }
+
+        // Tab Management
+        function updateTabs() {
+            tabsContainer.innerHTML = '';
+            
+            appState.tabs.forEach(fileName => {
+                const tab = document.createElement('div');
+                tab.className = `tab ${fileName === appState.activeTab ? 'active' : ''}`;
+                tab.innerHTML = `
+                    <i class="fas fa-file-code"></i>
+                    <span>${fileName}</span>
+                    <div class="tab-close">
+                        <i class="fas fa-times"></i>
+                    </div>
+                `;
+                
+                tab.addEventListener('click', () => {
+                    if (fileName !== appState.activeTab) {
+                        saveCurrentFile();
+                        openFile(fileName);
+                    }
+                });
+                
+                const closeBtn = tab.querySelector('.tab-close');
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeTab(fileName);
+                });
+                
+                tabsContainer.appendChild(tab);
+            });
+        }
+
+        function closeTab(fileName) {
+            if (appState.tabs.length <= 1) {
+                alert('Cannot close the last tab!');
+                return;
+            }
+            
+            saveCurrentFile();
+            
+            const tabIndex = appState.tabs.indexOf(fileName);
+            if (tabIndex !== -1) {
+                appState.tabs.splice(tabIndex, 1);
+            }
+            
+            if (fileName === appState.activeTab) {
+                appState.activeTab = appState.tabs[Math.max(0, tabIndex - 1)];
+                openFile(appState.activeTab);
+            }
+            
+            updateTabs();
+        }
+
+        // Explorer Management
+        function updateExplorer() {
+            explorerElement.innerHTML = '';
+            
+            // Add folder
+            const folderItem = document.createElement('div');
+            folderItem.className = 'explorer-item active';
+            folderItem.innerHTML = `
+                <i class="fas fa-folder-open folder"></i>
+                <span>project</span>
+            `;
+            explorerElement.appendChild(folderItem);
+            
+            // Add files
+            Object.keys(appState.files).forEach(fileName => {
+                const fileItem = document.createElement('div');
+                fileItem.className = `explorer-item ${fileName === appState.activeTab ? 'active' : ''}`;
+                fileItem.innerHTML = `
+                    <i class="fas fa-file-code file"></i>
+                    <span>${fileName}</span>
+                `;
+                
+                fileItem.addEventListener('click', () => {
+                    if (fileName !== appState.activeTab) {
+                        saveCurrentFile();
+                        openFile(fileName);
+                    }
+                });
+                
+                explorerElement.appendChild(fileItem);
+            });
+        }
+
+        // Preview Functions
+        function updatePreview() {
+            if (!appState.files['index.html']) return;
+            
+            let htmlContent = appState.files['index.html'];
+            let cssContent = appState.files['style.css'] || '';
+            let jsContent = appState.files['script.js'] || '';
+            
+            // Inject CSS and JS directly into HTML for preview
+            const fullHtml = htmlContent
+                .replace('</head>', `<style>${cssContent}</style></head>`)
+                .replace('</body>', `<script>${jsContent}<\/script></body>`);
+            
+            const blob = new Blob([fullHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            previewFrame.src = url;
+        }
+
+        // Editor Configuration Functions
+        function changeEditorTheme(theme) {
+            appState.theme = theme;
+            if (appState.editor) {
+                monaco.editor.setTheme(theme);
+            }
+        }
+
+        function changeUITheme(theme) {
+            appState.uiTheme = theme;
+            if (theme === 'high-contrast') {
+                document.body.classList.add('theme-high-contrast');
+            } else {
+                document.body.classList.remove('theme-high-contrast');
+            }
+        }
+
+        function changeFontSize(size) {
+            appState.fontSize = size;
+            if (appState.editor) {
+                appState.editor.updateOptions({ fontSize: size });
+            }
+        }
+
+        function changeFontFamily(family) {
+            appState.fontFamily = family;
+            if (appState.editor) {
+                appState.editor.updateOptions({ fontFamily: family });
+            }
+        }
+
+        // Utility Functions
+        function getLanguageFromFilename(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const languageMap = {
+                'html': 'html',
+                'css': 'css',
+                'js': 'javascript',
+                'json': 'json',
+                'md': 'markdown',
+                'py': 'python',
+                'txt': 'plaintext'
+            };
+            return languageMap[ext] || 'plaintext';
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function openFolder() {
+            // In a real implementation, this would use the File System Access API
+            // For this demo, we'll just add some sample files
+            alert('In a real implementation, this would open a folder using the File System Access API. For this demo, we\'ve already loaded a sample project.');
+        }
+
+        function runCode() {
+            updatePreview();
+            alert('Code is running! Check the preview panel.');
+        }
+
+        function openSettings() {
+            settingsPanel.classList.add('open');
+            overlay.classList.add('show');
+        }
+
+        function closeSettings() {
+            settingsPanel.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
