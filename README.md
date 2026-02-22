@@ -59,12 +59,30 @@ The objective of this project is to:
 
 ### 🖥️ Editor Interface
 
-Add your screenshot in project folder and rename as:
+![Editor Screenshot](https://github.com/rutikaTechLab/VS-code-Editor/blob/main/Screenshot%20(30).png)
 
-`screenshot.png`
+![Editor Screenshot](https://github.com/rutikaTechLab/VS-code-Editor/blob/main/Screenshot%20(32).png)
 
-Then it will show like this:
 
-![Editor Screenshot](screenshot.png)
+---
 
-You can also add multiple screenshots:
+## 📚 Key Learnings
+
+- Improved JavaScript skills
+- Learned DOM Manipulation
+- Learned Live Preview implementation
+- Learned Project Deployment using Netlify
+
+---
+
+## 👩‍💻 Created By
+
+**Rutika Patel**
+
+Aspiring Data Analyst
+
+---
+
+## ⭐ Support
+
+If you like this project, give it a ⭐ on GitHub
